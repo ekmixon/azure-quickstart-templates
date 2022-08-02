@@ -23,7 +23,7 @@ from cm_api.endpoints.services import ApiServiceSetupInfo, ApiService
 LOG_DIR='/log/cloudera'
 
 def getParameterValue(vmsize, parameter):
-    log("vmsize: "+vmsize+", parameter:"+parameter)
+    log(f"vmsize: {vmsize}, parameter:{parameter}")
     switcher = {
         "Standard_DS14:yarn_nodemanager_resource_cpu_vcores": "10",
         "Standard_DS14:yarn_nodemanager_resource_memory_mb": "45056",
@@ -33,7 +33,7 @@ def getParameterValue(vmsize, parameter):
         "Standard_DS13:impalad_memory_limit": "21500000000"
 
     }
-    return switcher.get(vmsize+":"+parameter, "0")
+    return switcher.get(f"{vmsize}:{parameter}", "0")
 
 def getDataDiskCount():
     bashCommand="lsblk | grep /data | grep -v /data/ | wc -l"
@@ -44,22 +44,20 @@ def getDataDiskCount():
     log(toconnect)
     client.connect(toconnect, username=cmx.ssh_root_user, password=cmx.ssh_root_password)
     stdin, stdout, stderr = client.exec_command(bashCommand)
-    count=stdout.readline().rstrip('\n')
-
-    return count
+    return stdout.readline().rstrip('\n')
 
 def setZookeeperOwnerDir(HA):
-    os.system("sudo chown zookeeper:zookeeper "+LOG_DIR+"/zookeeper")
+    os.system(f"sudo chown zookeeper:zookeeper {LOG_DIR}/zookeeper")
     # setup other masters in HA environment
     if HA:
         client=SSHClient()
         client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
         toconnect=socket.getfqdn(cmx.cm_server).replace("-mn0", "-mn1")
         client.connect(toconnect, username=cmx.ssh_root_user, password=cmx.ssh_root_password)
-        client.exec_command("sudo chown zookeeper:zookeeper "+LOG_DIR+"/zookeeper")
+        client.exec_command(f"sudo chown zookeeper:zookeeper {LOG_DIR}/zookeeper")
         toconnect=socket.getfqdn(cmx.cm_server).replace("-mn0", "-mn2")
         client.connect(toconnect, username=cmx.ssh_root_user, password=cmx.ssh_root_password)
-        client.exec_command("sudo chown zookeeper:zookeeper "+LOG_DIR+"/zookeeper")
+        client.exec_command(f"sudo chown zookeeper:zookeeper {LOG_DIR}/zookeeper")
 
 
 
@@ -1081,7 +1079,7 @@ def setup_sentry():
                           "sentry_server_database_port": "5432",
                           "sentry_server_database_type": "postgresql"}
 
-        service_config.update(cdh.dependencies_for(service))
+        service_config |= cdh.dependencies_for(service)
         service.update_config(service_config)
         hosts = management.get_hosts()
 
@@ -1095,7 +1093,7 @@ def setup_sentry():
         hive.update_config(cdh.dependencies_for(hive))
 
         # Disable HiveServer2 Impersonation - hive-HIVESERVER2-BASE - Default Group
-        role_group = hive.get_role_config_group("%s-HIVESERVER2-BASE" % hive.name)
+        role_group = hive.get_role_config_group(f"{hive.name}-HIVESERVER2-BASE")
         role_group.update_config({"hiveserver2_enable_impersonation": False})
 
         # This service is started later on
@@ -1108,7 +1106,7 @@ def setup_easy():
     """
     api = ApiResource(server_host=cmx.cm_server, username=cmx.username, password=cmx.password)
     cluster = api.get_cluster(cmx.cluster_name)
-    print "> Easy setup for cluster: %s" % cmx.cluster_name
+    api = ApiResource(server_host=cmx.cm_server, username=cmx.username, password=cmx.password)
     # Do not install these services
     do_not_install = ['KEYTRUSTEE', 'KMS', 'KS_INDEXER', 'ISILON', 'FLUME', 'MAPREDUCE', 'ACCUMULO',
                       'ACCUMULO16', 'SPARK_ON_YARN', 'SPARK', 'SOLR', 'SENTRY']
@@ -1128,7 +1126,7 @@ def setup_easy():
                       "hive_metastore_database_password": cmx.hive_password,
                       "hive_metastore_database_port": "5432",
                       "hive_metastore_database_type": "postgresql"}
-    service_config.update(cdh.dependencies_for(service))
+    service_config |= cdh.dependencies_for(service)
     service.update_config(service_config)
     check.status_for_command("Executing first run command. This might take a while.", cluster.first_run())
 
@@ -1236,7 +1234,9 @@ class ManagementActions:
         for mgmt_role in [x for x in self._role_list if x in self._role_types]:
             for role in [x for x in self._service.get_roles_by_type(mgmt_role) if x.roleState in state[action]]:
                 for cmd in getattr(self._service, action)(role.name):
-                    check.status_for_command("%s role %s" % (action.split("_")[0].upper(), mgmt_role), cmd)
+                    check.status_for_command(
+                        f'{action.split("_")[0].upper()} role {mgmt_role}', cmd
+                    )
 
     def setup(self):
         """

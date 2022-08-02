@@ -23,7 +23,7 @@ from cm_api.endpoints.services import ApiServiceSetupInfo, ApiService
 LOG_DIR='/log/cloudera'
 
 def getParameterValue(vmsize, parameter):
-    log("vmsize: "+vmsize+", parameter:"+parameter)
+    log(f"vmsize: {vmsize}, parameter:{parameter}")
     switcher = {
         "Standard_DS14:yarn_nodemanager_resource_cpu_vcores": "10",
         "Standard_DS14:yarn_nodemanager_resource_memory_mb": "45056",
@@ -34,7 +34,7 @@ def getParameterValue(vmsize, parameter):
 
     }
     # vmsize[:13] is used to truncate the VM size since Standard_DS?? and Standard_DS??_v2 need same values.
-    return switcher.get(vmsize[:13]+":"+parameter, "0")
+    return switcher.get(f"{vmsize[:13]}:{parameter}", "0")
 
 def getDataDiskCount():
     bashCommand="lsblk | grep /data | grep -v /data/ | wc -l"
@@ -45,22 +45,20 @@ def getDataDiskCount():
     log(toconnect)
     client.connect(toconnect, username=cmx.ssh_root_user, password=cmx.ssh_root_password)
     stdin, stdout, stderr = client.exec_command(bashCommand)
-    count=stdout.readline().rstrip('\n')
-
-    return count
+    return stdout.readline().rstrip('\n')
 
 def setZookeeperOwnerDir(HA):
-    os.system("sudo chown zookeeper:zookeeper "+LOG_DIR+"/zookeeper")
+    os.system(f"sudo chown zookeeper:zookeeper {LOG_DIR}/zookeeper")
     # setup other masters in HA environment
     if HA:
         client=SSHClient()
         client.set_missing_host_key_policy(paramiko.client.AutoAddPolicy())
         toconnect=socket.getfqdn(cmx.cm_server).replace("-mn0", "-mn1")
         client.connect(toconnect, username=cmx.ssh_root_user, password=cmx.ssh_root_password)
-        client.exec_command("sudo chown zookeeper:zookeeper "+LOG_DIR+"/zookeeper")
+        client.exec_command(f"sudo chown zookeeper:zookeeper {LOG_DIR}/zookeeper")
         toconnect=socket.getfqdn(cmx.cm_server).replace("-mn0", "-mn2")
         client.connect(toconnect, username=cmx.ssh_root_user, password=cmx.ssh_root_password)
-        client.exec_command("sudo chown zookeeper:zookeeper "+LOG_DIR+"/zookeeper")
+        client.exec_command(f"sudo chown zookeeper:zookeeper {LOG_DIR}/zookeeper")
 
 
 

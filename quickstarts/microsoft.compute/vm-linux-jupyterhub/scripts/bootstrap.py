@@ -55,17 +55,17 @@ def run_subprocess(cmd, *args, **kwargs):
         # For now, prioritizing human readability over machine readability.	
         logger.debug(proc.stdout.decode())	
 
-def validate_host():	
+def validate_host():
     """	
     Make sure TLJH is installable in current host	
     """	
     # Support only Ubuntu 18.04+	
-    distro = get_os_release_variable('ID')	
-    version = float(get_os_release_variable('VERSION_ID'))	
+    distro = get_os_release_variable('ID')
+    version = float(get_os_release_variable('VERSION_ID'))
     if distro != 'ubuntu':	
         print('The Littlest JupyterHub currently supports Ubuntu Linux only')	
-        sys.exit(1)	
-    elif float(version) < 18.04:	
+        sys.exit(1)
+    elif version < 18.04:	
         print('The Littlest JupyterHub requires Ubuntu 18.04 or higher')	
         sys.exit(1)	
 
